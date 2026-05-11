@@ -510,6 +510,7 @@ extern "C" {
 
         GGML_OP_MUL_MAT,
         GGML_OP_MUL_MAT_ID,
+        GGML_OP_MOE_FUSED_UP_GATE,
         GGML_OP_OUT_PROD,
 
         GGML_OP_SCALE,
@@ -1438,6 +1439,16 @@ extern "C" {
             struct ggml_tensor  * as,
             struct ggml_tensor  * b,
             struct ggml_tensor  * ids);
+
+    // fused MoE up+gate: one matmul producing both up and gate projections
+    // handles -1 in ids (skipped experts) by zeroing output for those entries
+    GGML_API struct ggml_tensor * ggml_moe_up_gate(
+            struct ggml_context * ctx,
+            struct ggml_tensor  * as_up,
+            struct ggml_tensor  * as_gate,  // can be NULL if as_up is gate_up_merged
+            struct ggml_tensor  * b,
+            struct ggml_tensor  * ids,
+            enum   ggml_unary_op  op);
 
     // A: m columns, n rows,
     // B: p columns, n rows,
