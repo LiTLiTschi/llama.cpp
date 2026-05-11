@@ -8219,9 +8219,9 @@ static void ggml_compute_forward_argsort_thresh_f32(
 
     const struct ggml_tensor * src0 = dst->src[0];
 
-    GGML_TENSOR_UNARY_OP_LOCALS
-
-    GGML_ASSERT(nb0 == sizeof(float));
+    const int64_t ne0  = src0->ne[0];
+    const size_t  nb01 = src0->nb[1];
+    const size_t  nb1  = dst->nb[1];
 
     const int ith = params->ith;
     const int nth = params->nth;
@@ -8239,7 +8239,7 @@ static void ggml_compute_forward_argsort_thresh_f32(
             dst_data[j] = j;
         }
 
-        // Sort indices by descending value (bubble sort — fine for <256 experts)
+        // Bubble sort indices by descending src value
         for (int64_t j = 0; j < ne0; j++) {
             for (int64_t k = j + 1; k < ne0; k++) {
                 if (src_data[dst_data[j]] < src_data[dst_data[k]]) {
