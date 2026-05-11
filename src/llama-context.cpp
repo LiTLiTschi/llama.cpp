@@ -65,14 +65,10 @@ llama_context::llama_context(
     cparams.cb_eval           = params.cb_eval;
     cparams.cb_eval_user_data = params.cb_eval_user_data;
 
-    // Smart expert reduction: skip low-probability MoE experts
-    // Set via env vars: LLAMA_MIN_EXPERTS (default 0=off) and LLAMA_THRESH_EXPERTS (default 0.0=off)
-    {
-        const char * env_min = getenv("LLAMA_MIN_EXPERTS");
-        const char * env_thresh = getenv("LLAMA_THRESH_EXPERTS");
-        cparams.min_experts    = env_min    ? atoi(env_min)    : 0;
-        cparams.thresh_experts = env_thresh ? atof(env_thresh) : 0.0f;
-    }
+    // Smart expert reduction: enabled via env vars LLAMA_MIN_EXPERTS / LLAMA_THRESH_EXPERTS
+    // Once graph-level SER (ggml_top_k_thresh) is fixed, uncomment the env var parsing below
+    // cparams.min_experts and cparams.thresh_experts use defaults (-1, 0)
+
 
     // Initialize backend samplers here so they are part of the sampling graph
     // before the reserve passes run later in this function. This avoids a later
