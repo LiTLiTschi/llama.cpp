@@ -1454,13 +1454,20 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
         cb(selection_probs, "ffn_moe_probs_masked", il);
     }
 
-    // select experts
-    // NOTE: ggml_top_k_thresh (MoE smart expert reduction) is available but requires
-    // fused MoE ops to handle -1 indices. Enable with LLAMA_MIN_EXPERTS/LLAMA_THRESH_EXPERTS
-    // env vars once fused ops are implemented.
-    ggml_tensor * selected_experts = ggml_argsort_top_k(ctx0, selection_probs, n_expert_used); // [n_expert_used, n_tokens]
-    cb(selected_experts->src[0], "ffn_moe_argsort", il);
-    cb(selected_experts, "ffn_moe_topk", il);
+    // select experts (with optional SER: Smart Expert Reduction)
+    ggml_tensor * selected_experts_orig;  // may contain -1 for skipped experts (used by moe_up_gate)
+    ggml_tensor * selected_experts;       // clamped to valid range (used by get_rows, MUL_MAT_ID)
+    bool use_ser = (cparams.min_experts > 0 && cparams.thresh_experts > 0.0f);
+    if (use_ser) {
+        selected_experts_orig = ggml_top_k_thresh(ctx0, selection_probs, n_expert_used,
+                cparams.min_experts, cparams.thresh_experts);
+        selected_experts = ggml_clamp(ctx0, selected_experts_orig, 0, n_expert - 1);
+    } else {
+        selected_experts_orig = ggml_argsort_top_k(ctx0, selection_probs, n_expert_used);
+        selected_experts = selected_experts_orig;
+    }
+    cb(selected_experts_orig->src[0], "ffn_moe_argsort", il);
+    cb(selected_experts_orig, "ffn_moe_topk", il);
 
     if (arch == LLM_ARCH_GROVEMOE && n_expert != hparams.n_expert) {
         // TODO: Use scalar div instead when/if implemented
@@ -1518,8 +1525,14 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
     ggml_tensor * experts = nullptr;
 
     if (gate_up_exps) {
-        // merged gate_up path: one mul_mat_id, then split into gate and up views
-        ggml_tensor * gate_up = build_lora_mm_id(gate_up_exps, cur, selected_experts); // [n_ff*2, n_expert_used, n_tokens]
+        // merged gate_up path: one matmul, then split into gate and up views
+        ggml_tensor * gate_up;
+        if (use_ser) {
+            // Use MOE_FUSED_UP_GATE which handles -1 expert indices from SER
+            gate_up = ggml_moe_up_gate(ctx0, gate_up_exps, NULL, cur, selected_experts_orig, GGML_UNARY_OP_SILU);
+        } else {
+            gate_up = build_lora_mm_id(gate_up_exps, cur, selected_experts); // [n_ff*2, n_expert_used, n_tokens]
+        }
         cb(gate_up, "ffn_moe_gate_up", il);
 
         if (gate_up_exps_b) {
