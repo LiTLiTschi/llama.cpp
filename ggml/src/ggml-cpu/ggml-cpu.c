@@ -1968,6 +1968,10 @@ static void ggml_compute_forward(struct ggml_compute_params * params, struct ggm
             {
                 ggml_compute_forward_top_k(params, tensor);
             } break;
+        case GGML_OP_ARGSORT_THRESH:
+            {
+                ggml_compute_forward_argsort_thresh(params, tensor);
+            } break;
         case GGML_OP_LEAKY_RELU:
             {
                 ggml_compute_forward_leaky_relu(params, tensor);

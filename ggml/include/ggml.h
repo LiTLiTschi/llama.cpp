@@ -550,6 +550,8 @@ extern "C" {
         GGML_OP_TIMESTEP_EMBEDDING,
         GGML_OP_ARGSORT,
         GGML_OP_TOP_K,
+        GGML_OP_ARGSORT_THRESH,
+        GGML_OP_GROUPED_TOPK,
         GGML_OP_LEAKY_RELU,
         GGML_OP_TRI,
         GGML_OP_FILL,
@@ -2377,6 +2379,20 @@ extern "C" {
             struct ggml_context * ctx,
             struct ggml_tensor  * a,
             int                   k);
+
+    // threshold-aware top-k: discards experts below thresh*max_prob, keeps at least min_entries
+    GGML_API struct ggml_tensor * ggml_argsort_thresh(
+            struct ggml_context * ctx,
+            struct ggml_tensor  * a,
+            int                   min_entries,
+            float                 thresh);
+
+    GGML_API struct ggml_tensor * ggml_top_k_thresh(
+            struct ggml_context * ctx,
+            struct ggml_tensor  * a,
+            int                   k,
+            int                   min_entries,
+            float                 thresh);
 
     GGML_API struct ggml_tensor * ggml_arange(
             struct ggml_context * ctx,

@@ -1046,6 +1046,8 @@ static const char * GGML_OP_NAME[GGML_OP_COUNT] = {
     "TIMESTEP_EMBEDDING",
     "ARGSORT",
     "TOP_K",
+    "ARGSORT_THRESH",
+    "GROUPED_TOPK",
     "LEAKY_RELU",
     "TRI",
     "FILL",
@@ -1080,7 +1082,7 @@ static const char * GGML_OP_NAME[GGML_OP_COUNT] = {
     "GLU",
 };
 
-static_assert(GGML_OP_COUNT == 96, "GGML_OP_COUNT != 96");
+static_assert(GGML_OP_COUNT == 98, "GGML_OP_COUNT != 96");
 
 static const char * GGML_OP_SYMBOL[GGML_OP_COUNT] = {
     "none",
@@ -1190,7 +1192,7 @@ static const char * GGML_OP_SYMBOL[GGML_OP_COUNT] = {
     "glu(x)",
 };
 
-static_assert(GGML_OP_COUNT == 96, "GGML_OP_COUNT != 96");
+static_assert(GGML_OP_COUNT == 98, "GGML_OP_COUNT != 96");
 
 static_assert(GGML_OP_POOL_COUNT == 2, "GGML_OP_POOL_COUNT != 2");
 
@@ -5298,6 +5300,51 @@ struct ggml_tensor * ggml_top_k(
 
     result->op     = GGML_OP_TOP_K;
     result->src[0] = a;
+
+    return result;
+}
+
+// ggml_argsort_thresh
+
+struct ggml_tensor * ggml_argsort_thresh(
+        struct ggml_context * ctx,
+        struct ggml_tensor  * a,
+        int                   min_entries,
+        float                 thresh) {
+    bool is_node = false;
+
+    struct ggml_tensor * result = ggml_new_tensor(ctx, GGML_TYPE_I32, GGML_MAX_DIMS, a->ne);
+
+    ggml_set_op_params_i32(result, 0, (int32_t) min_entries);
+    ggml_set_op_params_f32(result, 1, thresh);
+
+    result->op   = GGML_OP_ARGSORT_THRESH;
+    result->src[0] = a;
+
+    return result;
+}
+
+// ggml_top_k_thresh
+
+struct ggml_tensor * ggml_top_k_thresh(
+        struct ggml_context * ctx,
+        struct ggml_tensor  * a,
+        int                   k,
+        int                   min_entries,
+        float                 thresh) {
+    GGML_ASSERT(a->ne[0] >= k);
+
+    struct ggml_tensor * result;
+    if (min_entries <= 0 || thresh <= 0) {
+        result = ggml_argsort(ctx, a, GGML_SORT_ORDER_DESC);
+    } else {
+        result = ggml_argsort_thresh(ctx, a, min_entries, thresh);
+    }
+
+    result = ggml_view_4d(ctx, result,
+                k, result->ne[1], result->ne[2], result->ne[3],
+                   result->nb[1], result->nb[2], result->nb[3],
+                0);
 
     return result;
 }
