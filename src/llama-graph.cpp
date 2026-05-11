@@ -1461,7 +1461,10 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
     if (use_ser) {
         selected_experts_orig = ggml_top_k_thresh(ctx0, selection_probs, n_expert_used,
                 cparams.min_experts, cparams.thresh_experts);
-        selected_experts = ggml_clamp(ctx0, selected_experts_orig, 0, n_expert - 1);
+        // Clamp -1 to 0: cast f32, relu (relu(-1)=0), cast back i32
+        ggml_tensor * ser_f32 = ggml_cast(ctx0, selected_experts_orig, GGML_TYPE_F32);
+        ser_f32 = ggml_relu(ctx0, ser_f32);
+        selected_experts = ggml_cast(ctx0, ser_f32, GGML_TYPE_I32);
     } else {
         selected_experts_orig = ggml_argsort_top_k(ctx0, selection_probs, n_expert_used);
         selected_experts = selected_experts_orig;
