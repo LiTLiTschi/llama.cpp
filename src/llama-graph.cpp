@@ -1455,6 +1455,9 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
     }
 
     // select experts
+    // NOTE: ggml_top_k_thresh (MoE smart expert reduction) is available but requires
+    // fused MoE ops to handle -1 indices. Enable with LLAMA_MIN_EXPERTS/LLAMA_THRESH_EXPERTS
+    // env vars once fused ops are implemented.
     ggml_tensor * selected_experts = ggml_argsort_top_k(ctx0, selection_probs, n_expert_used); // [n_expert_used, n_tokens]
     cb(selected_experts->src[0], "ffn_moe_argsort", il);
     cb(selected_experts, "ffn_moe_topk", il);

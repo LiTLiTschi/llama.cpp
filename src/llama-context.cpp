@@ -65,6 +65,15 @@ llama_context::llama_context(
     cparams.cb_eval           = params.cb_eval;
     cparams.cb_eval_user_data = params.cb_eval_user_data;
 
+    // Smart expert reduction: skip low-probability MoE experts
+    // Set via env vars: LLAMA_MIN_EXPERTS (default 0=off) and LLAMA_THRESH_EXPERTS (default 0.0=off)
+    {
+        const char * env_min = getenv("LLAMA_MIN_EXPERTS");
+        const char * env_thresh = getenv("LLAMA_THRESH_EXPERTS");
+        cparams.min_experts    = env_min    ? atoi(env_min)    : 0;
+        cparams.thresh_experts = env_thresh ? atof(env_thresh) : 0.0f;
+    }
+
     // Initialize backend samplers here so they are part of the sampling graph
     // before the reserve passes run later in this function. This avoids a later
     // re-reserve when graph nodes change.

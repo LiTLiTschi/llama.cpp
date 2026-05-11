@@ -40,6 +40,9 @@ struct llama_cparams {
     bool kv_unified;
     bool pipeline_parallel;
 
+    int  min_experts    = -1;  // smart expert reduction: min experts to keep
+    float thresh_experts = 0;  // threshold as fraction of max expert prob
+
     enum llama_pooling_type pooling_type;
 
     ggml_backend_sched_eval_callback cb_eval;
